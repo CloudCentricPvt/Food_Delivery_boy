@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "930436317418",
+    "firebase_url": "https://food-delivery-app-e42ce-default-rtdb.firebaseio.com",
+    "project_id": "food-delivery-app-e42ce",
+    "storage_bucket": "food-delivery-app-e42ce.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930436317418:android:501ce700d87ad59ea29793",
+        "android_client_info": {
+          "package_name": "com.cccinfotech.deliveryboy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa7CzuvxHpyxnuZIS2LmJ2Z2W9VtH1noY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930436317418:android:15a5b40e5fe72233a29793",
+        "android_client_info": {
+          "package_name": "com.cccinfotech.fooddeliveryapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa7CzuvxHpyxnuZIS2LmJ2Z2W9VtH1noY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930436317418:android:aba769c31ae41db0a29793",
+        "android_client_info": {
+          "package_name": "com.cccinfotech.fooddeliverypoc"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa7CzuvxHpyxnuZIS2LmJ2Z2W9VtH1noY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
