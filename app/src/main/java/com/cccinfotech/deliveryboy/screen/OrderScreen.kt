@@ -379,7 +379,6 @@ fun OrderDetailsDialog(
                     updateOrderStatusByOrderId(order.orderId ?: "", "delivered", "Sabir", "$dBoyId") {
                         onStatusChange(order.copy(status = "delivered"))
                         onDismiss()
-
                         //  Stop Foreground Service when delivered
                         context.stopService(Intent(context, DeliveryTrackingService::class.java))
                     }
