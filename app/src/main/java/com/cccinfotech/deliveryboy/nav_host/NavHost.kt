@@ -1,15 +1,19 @@
 package com.cccinfotech.deliveryboy.nav_host
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.cccinfotech.deliveryboy.screen.AuthScreen
 import com.cccinfotech.deliveryboy.screen.DeliveryHome
+import com.cccinfotech.deliveryboy.screen.ProfileScreen
 import com.cccinfotech.deliveryboy.screen.SignupScreen
 import com.cccinfotech.deliveryboy.utils.SharedPrefManager
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun DeliveryAppMain() {
     val navController = rememberNavController()
@@ -33,6 +37,7 @@ fun DeliveryAppMain() {
         composable("login") { AuthScreen(navController) }
         composable("delivery_boy_home_screen") { DeliveryHome(navController) }
         composable("sign_up_screen") { SignupScreen(navController) }
+        composable("profile_screen") { ProfileScreen(navController) }
     }
 }
 

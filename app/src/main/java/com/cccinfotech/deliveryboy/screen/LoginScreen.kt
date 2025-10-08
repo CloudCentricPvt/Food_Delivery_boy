@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -25,9 +26,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.cccinfotech.deliveryboy.ordermodel.User
 import com.cccinfotech.deliveryboy.reusable_widget.KUserInputTest
 import com.cccinfotech.deliveryboy.utils.SharedPrefManager
 import com.google.firebase.FirebaseApp
@@ -78,10 +82,20 @@ fun AuthScreen(navController: NavController?) {
                         value = email,
                         onValueChange = {
                             email = it
-                            emailError = "Enter User Id"
+                            emailError = ""
                         },
+
                         hint = "Enter Email"
                     )
+                    // 🔴 Show email error
+                    if (emailError.isNotEmpty()) {
+                        Text(
+                            text = emailError,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
 
                     Spacer(Modifier.height(20.dp))
 
@@ -91,10 +105,19 @@ fun AuthScreen(navController: NavController?) {
                         value = password,
                         onValueChange = {
                             password = it
-                            passwordError = "Please Enter Password"
+                            passwordError = ""
                         },
                         hint = "Enter Password"
                     )
+                    // 🔴 Show password error
+                    if (passwordError.isNotEmpty()) {
+                        Text(
+                            text = passwordError,
+                            color = Color.Red,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                     Spacer(Modifier.height(20.dp))
                     Row(modifier = Modifier.fillMaxWidth()) {
                         Text("Don't have an account ? ")
@@ -110,36 +133,73 @@ fun AuthScreen(navController: NavController?) {
 
                     Button(
                         onClick = {
+
+                            var valid = true
+
+                            if (email.isBlank()) {
+                                emailError = "Please enter your email"
+                                valid = false
+                            }
+
+                            if (password.isBlank()) {
+                                passwordError = "Please enter your password"
+                                valid = false
+                            }
+
+                            if (!valid) return@Button
+
+
                             FirebaseAuth.getInstance()
                                 .signInWithEmailAndPassword(email.trim(), password.trim())
                                 .addOnSuccessListener { res ->
                                     val uid = res.user?.uid ?: return@addOnSuccessListener
 
+                                    val db = FirebaseFirestore.getInstance()
 
-                                    // ✅ Save token with user info in Firestore
-                                    FirebaseFirestore.getInstance()
-                                        .collection("users")
+                                    // 🔹 Step 1: Get user details from Firestore
+                                    db.collection("users")
                                         .document(uid)
-                                        .update("fcm_token", fcmToken)
-                                        .addOnSuccessListener {
-                                            Log.d("##FCM", "Token saved: $fcmToken")
+                                        .get()
+                                        .addOnSuccessListener { document ->
+                                            if (document != null && document.exists()) {
+                                                val role = document.getString("role")
 
-                                        }
-                                        .addOnFailureListener {
-                                            Log.e("##FCM", "Failed to save token: ${it.message}")
-                                        }
+                                                if (role == "Delivery boy") {
+                                                    // ✅ Step 2: Update FCM token
+                                                    db.collection("users")
+                                                        .document(uid)
+                                                        .update("fcm_token", fcmToken)
+                                                        .addOnSuccessListener {
+                                                            Log.d("##FCM", "Token saved: $fcmToken")
+                                                        }
+                                                        .addOnFailureListener {
+                                                            Log.e("##FCM", "Failed to save token: ${it.message}")
+                                                        }
 
-                                    // ✅ Navigate after saving
-                                    navController?.navigate("delivery_boy_home_screen") {
-                                        SharedPrefManager.putBoolean("Logged_In",true)
-                                        SharedPrefManager.putString("deliveryBoy_name",uid)
-                                        popUpTo("login") { inclusive = true }
-                                    }
+                                                    // ✅ Step 3: Navigate to delivery home screen
+                                                    navController?.navigate("delivery_boy_home_screen") {
+                                                        SharedPrefManager.putBoolean("Logged_In", true)
+                                                        SharedPrefManager.putString("deliveryBoy_name", uid)
+                                                        popUpTo("login") { inclusive = true }
+                                                    }
+                                                } else {
+                                                    // User is not a delivery boy
+                                                    Toast.makeText(context, "This user is not a Delivery Boy", Toast.LENGTH_LONG).show()
+                                                    FirebaseAuth.getInstance().signOut()
+                                                }
+                                            } else {
+                                                Toast.makeText(context, "User record not found", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Toast.makeText(context, "Error fetching user details: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
                                 }
                                 .addOnFailureListener {
                                     Toast.makeText(context, it.message, Toast.LENGTH_SHORT).show()
                                     Log.d("#Result", it.message.toString())
                                 }
+
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Login") }
@@ -170,6 +230,9 @@ fun GetDeviceTokenComposable(onTokenReceived: (String) -> Unit) {
             }
     }
 }
+
+
+
 
 
 
