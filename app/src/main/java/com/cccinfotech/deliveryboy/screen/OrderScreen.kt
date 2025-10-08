@@ -484,7 +484,6 @@ fun OtpDialog(
 }
 
 
-
 @Composable
 fun OrderDetailsDialog(
     order: Order,
