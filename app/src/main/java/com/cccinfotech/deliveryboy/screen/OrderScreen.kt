@@ -10,11 +10,13 @@ import android.widget.Toast
 import kotlin.random.Random
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cancel
@@ -23,7 +25,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -66,14 +71,15 @@ fun DeliveryHome(navController: NavHostController) {
     val snackbarHostState = remember { SnackbarHostState() }
     var expanded by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
-    var showOtpDialog by remember { mutableStateOf(false) }
 
     var userName by remember { mutableStateOf("") }
     var userEmail by remember { mutableStateOf("") }
     var userPhone by remember { mutableStateOf("") }
     val otpVerify by remember { mutableStateOf("") }
 
-
+    // ✅ OTP Dialog ke liye parent level state
+    var showOtpDialog by remember { mutableStateOf(false) }
+    var orderForOtp by remember { mutableStateOf<Order?>(null) }
 
     val currentUser = FirebaseAuth.getInstance().currentUser
     val dBoyId = currentUser?.uid
@@ -108,7 +114,7 @@ fun DeliveryHome(navController: NavHostController) {
             userName = user.name.toString()
             userEmail = user.email.toString()
             userPhone = user.phone.toString()
-            SharedPrefManager.putString("Role",user.role.toString())
+            SharedPrefManager.putString("Role", user.role.toString())
         }
     }
 
@@ -125,9 +131,7 @@ fun DeliveryHome(navController: NavHostController) {
                             text = { Text("Profile") },
                             onClick = {
                                 expanded = false
-                                navController.navigate("profile_screen") {
-                                    //popUpTo("delivery_boy_home_screen") { inclusive = true }
-                                }
+                                navController.navigate("profile_screen")
                             })
                         DropdownMenuItem(
                             text = { Text("Completed order") },
@@ -188,26 +192,17 @@ fun DeliveryHome(navController: NavHostController) {
 
                 else -> {
 
-                    /*val filteredOrders = when (selectedTab) {
-                        1 -> orders.filter { it.status == "Pending" }
-                        2 -> orders.filter { it.status == "inprogress" || it.status == "out for delivery" }
-                        3 -> orders.filter { it.status == "delivered" }
-                        else -> orders
-                    }*/
-
                     val filteredOrders = when (selectedTab) {
-                        1 -> orders.filter { it.status == "Pending" } // Show all pending orders to all users
-
+                        1 -> orders.filter { it.status == "Pending" }
                         2 -> orders.filter {
                             (it.status == "inprogress" || it.status == "out for delivery") && it.dBoy_Id == dBoyId
-                        } // Show only user's active orders
-
+                        }
                         3 -> orders.filter {
                             it.status == "delivered" && it.dBoy_Id == dBoyId
-                        } // Show only user's delivered orders
+                        }
                         else -> orders.filter {
                             it.status == "Pending" || it.dBoy_Id == dBoyId
-                        } // "All" tab = Pending for everyone + user’s own orders
+                        }
                     }
 
                     if (filteredOrders.isEmpty()) {
@@ -224,7 +219,7 @@ fun DeliveryHome(navController: NavHostController) {
                                 )
                             )
                         }
-                    }else{
+                    } else {
 
                         LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(filteredOrders) { order ->
@@ -252,12 +247,9 @@ fun DeliveryHome(navController: NavHostController) {
                                                     return@clickable
                                                 }
                                             }
-
-                                            // Set selected order
                                             selectedOrder = order
                                         },
-
-                                        colors = CardDefaults.cardColors(
+                                    colors = CardDefaults.cardColors(
                                         containerColor = if (order.status.equals("delivered", true)) {
                                             Color.White
                                         } else {
@@ -273,34 +265,26 @@ fun DeliveryHome(navController: NavHostController) {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Column {
-                                            Text("Order No: ${order.orderNumber?:""}", style = TextStyle(fontWeight = FontWeight.ExtraBold, color = Color.Blue))
-                                            //Text("#OrderId: ${order.orderId?:""}", style = TextStyle(fontWeight = FontWeight.SemiBold, color = Color.Blue))
-                                            Text("Customer: ${order.customerName?:""}", style = TextStyle(fontWeight = FontWeight.Bold, color = Color.Black))
-                                            Row { Text("Date: ${order.orderDate?:""}|${order.currentTime?:""}") }
+                                            Text("Order No: ${order.orderNumber ?: ""}", style = TextStyle(fontWeight = FontWeight.ExtraBold, color = Color.Blue))
+                                            Text("Customer: ${order.customerName ?: ""}", style = TextStyle(fontWeight = FontWeight.Bold, color = Color.Black))
+                                            Row { Text("Date: ${order.orderDate ?: ""}|${order.currentTime ?: ""}") }
 
-                                            // Show product items
                                             order.items?.forEach { item ->
-                                                Divider(
-                                                    color = Color.Gray,
-                                                    thickness = 0.5.dp
-                                                )
+                                                Divider(color = Color.Gray, thickness = 0.5.dp)
                                                 Row(
                                                     modifier = Modifier
                                                         .fillMaxWidth()
                                                         .padding(8.dp),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
-                                                    // 🖼️ Small Image (fixed size)
                                                     Image(
                                                         painter = rememberImagePainter(item.productImage),
                                                         contentDescription = item.productName,
                                                         contentScale = ContentScale.Crop,
                                                         modifier = Modifier
-                                                            .size(80.dp) // smaller image size
+                                                            .size(80.dp)
                                                             .clip(RoundedCornerShape(8.dp))
                                                     )
-
-                                                    // Text Section (fills remaining width)
                                                     Column(
                                                         modifier = Modifier
                                                             .weight(1f)
@@ -309,23 +293,15 @@ fun DeliveryHome(navController: NavHostController) {
                                                         Text("Product: ${item.productName}")
                                                         Text("Quantity: ${item.quantity}")
                                                         Text("Amount: ₹${item.amount}")
-                                                        Text("Description: ${item.productDetails}", style = TextStyle(fontWeight = FontWeight.ExtraLight, color = Color.Black,
-                                                            ), maxLines = 2,)
+                                                        Text("Description: ${item.productDetails}", maxLines = 2)
                                                     }
                                                 }
                                             }
-                                            Divider(
-                                                color = Color.Gray,
-                                                thickness = 0.5.dp
-                                            )
-
-                                            Text("Status: ${order.status}", style = TextStyle(fontWeight = FontWeight.W400, color = Color.Black))
-                                            Text("Delivery boy: ${order.deliveryBoye?:""}", style = TextStyle(fontWeight = FontWeight.W400, color = Color.Red))
-                                            Text("Delivered address: ${order.orderAddress}", style = TextStyle(fontWeight = FontWeight.ExtraLight, color = Color.Black))
-                                            Row(
-                                                horizontalArrangement = Arrangement.End,
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
+                                            Divider(color = Color.Gray, thickness = 0.5.dp)
+                                            Text("Status: ${order.status}")
+                                            Text("Delivery boy: ${order.deliveryBoye ?: ""}", color = Color.Red)
+                                            Text("Delivered address: ${order.orderAddress}")
+                                            Row(horizontalArrangement = Arrangement.End) {
                                                 DirectionIcon(
                                                     lat = order.orderLatitude ?: 0.0,
                                                     lng = order.orderLongitude ?: 0.0
@@ -345,7 +321,7 @@ fun DeliveryHome(navController: NavHostController) {
         }
     }
 
-    // Order Details Dialog
+    // ✅ Order Details Dialog
     selectedOrder?.let { order ->
         OrderDetailsDialog(
             order = order,
@@ -354,6 +330,28 @@ fun DeliveryHome(navController: NavHostController) {
             name = userName,
             otp = otpVerify,
             onDismiss = { selectedOrder = null },
+            onStatusChange = { updatedOrder ->
+                orders = orders.map { if (it.orderId == updatedOrder.orderId) updatedOrder else it }
+            },
+            onDeliveredClicked = { orderToDeliver ->
+                orderForOtp = orderToDeliver
+                showOtpDialog = true
+                selectedOrder = null
+            }
+        )
+    }
+
+    // ✅ OTP Dialog parent level pe
+    if (showOtpDialog && orderForOtp != null) {
+        OtpDialogForOrder(
+            order = orderForOtp!!,
+            currentUser = currentUser,
+            dBoyId = dBoyId,
+            name = userName,
+            onDismiss = {
+                showOtpDialog = false
+                orderForOtp = null
+            },
             onStatusChange = { updatedOrder ->
                 orders = orders.map { if (it.orderId == updatedOrder.orderId) updatedOrder else it }
             }
@@ -369,7 +367,6 @@ fun DeliveryHome(navController: NavHostController) {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        //showLogoutDialog = false
                         SharedPrefManager.remove("Logged_In")
                         navController.navigate("login") {
                             popUpTo("delivery_boy_home_screen") { inclusive = true }
@@ -388,239 +385,124 @@ fun DeliveryHome(navController: NavHostController) {
 
 
 @Composable
-fun OtpDialog(
-    order: Order,
-    currentUser: FirebaseUser?,
-    dBoyId: String?,
-    name: String?,
-    otp: String?, // The OTP stored in Firestore
-    onDismiss: () -> Unit,
-    onStatusChange: (Order) -> Unit
-) {
-    val context = LocalContext.current
-    var enteredOtp by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    AlertDialog(
-        onDismissRequest = { onDismiss() },
-        title = {
-            Text(
-                text = "Enter OTP",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold
-                )
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "Please enter the 4-digit OTP provided by the customer to confirm delivery.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // OTP TextField
-                OutlinedTextField(
-                    value = enteredOtp,
-                    onValueChange = {
-                        if (it.length <= 4 && it.all { c -> c.isDigit() }) {
-                            enteredOtp = it
-                        }
-                    },
-                    label = { Text("Enter OTP") },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.width(180.dp)
-                )
-
-                if (errorMessage != null) {
-                    Text(
-                        text = errorMessage ?: "",
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 14.sp,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (enteredOtp == otp) {
-                        // ✅ OTP matched — mark as delivered
-                        updateOrderStatusByOrderId(
-                            orderId = order.orderId ?: "",
-                            newStatus = "delivered",
-                            dName = name ?: "",
-                            dBoyID = dBoyId ?: "",
-                            deliveryTimeOTP = ""
-                        ) {
-                            Toast.makeText(context, "Order delivered successfully!", Toast.LENGTH_SHORT).show()
-                            onStatusChange(order.copy(status = "delivered"))
-                            onDismiss()
-                        }
-                    } else {
-                        errorMessage = "Invalid OTP. Please try again."
-                    }
-                },
-                enabled = enteredOtp.length == 4
-            ) {
-                Text("Verify OTP")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = { onDismiss() }) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-
-@Composable
 fun OrderDetailsDialog(
     order: Order,
     currentUser: FirebaseUser?,
     dBoyId: String?,
-    name:String?,
-    otp:String?,
+    name: String?,
+    otp: String?,
     onDismiss: () -> Unit,
-    onStatusChange: (Order) -> Unit
+    onStatusChange: (Order) -> Unit,
+    onDeliveredClicked: (Order) -> Unit
 ) {
     val context = LocalContext.current
+    var otp11 by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
-        title = { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Order Details")
-            Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel", modifier = Modifier.clickable { onDismiss() })}
+        title = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Order Details")
+                Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel", modifier = Modifier.clickable { onDismiss() })
+            }
         },
         text = {
             Column {
-                Text("Order No: ${order.orderNumber?:""}", style = TextStyle(fontWeight = FontWeight.ExtraBold, color = Color.Blue))
-                Text("#OrderId: ${order.orderId?:""}", style = TextStyle(fontWeight = FontWeight.SemiBold, color = Color.Black))
+                Text("Order No: ${order.orderNumber ?: ""}", style = TextStyle(fontWeight = FontWeight.ExtraBold, color = Color.Blue))
+                Text("#OrderId: ${order.orderId ?: ""}")
                 Row { Text("Date: ${order.orderDate}|${order.currentTime}") }
                 Text("Customer: ${order.customerName}")
 
-                // ✅ Show product items
                 order.items?.forEach { item ->
-                    Divider(
-                        color = Color.Gray,
-                        thickness = 0.5.dp
-                    )
+                    Divider(color = Color.Gray, thickness = 0.5.dp)
                     Text("Product: ${item.productName}")
                     Text("Quantity: ${item.quantity}")
                     Text("Amount: ₹${item.amount}")
-                    Text("Description: ${item.productDetails}",style = TextStyle(fontWeight = FontWeight.ExtraLight, color = Color.Black))
-
+                    Text("Description: ${item.productDetails}")
                 }
 
-                Divider(
-                    color = Color.Gray,
-                    thickness = 0.5.dp
-                )
-
-                Text("Delivery boy: ${order.deliveryBoye?:""}", style = TextStyle(fontWeight = FontWeight.W400, color = Color.Red))
+                Divider(color = Color.Gray, thickness = 0.5.dp)
+                Text("Delivery boy: ${order.deliveryBoye ?: ""}", color = Color.Red)
                 Text("Status: ${order.status}")
-                Text("Delivered address: ${order.orderAddress}", style = TextStyle(fontWeight = FontWeight.ExtraLight, color = Color.Black))
-
-
+                Text("Delivered address: ${order.orderAddress}")
             }
         },
         confirmButton = {
-
             when (order.status) {
-                "Pending" ->
-                    Button(onClick = {
-                        if (ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_FINE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED ||
-                            ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.ACCESS_COARSE_LOCATION
-                            ) != PackageManager.PERMISSION_GRANTED ||
-                            ContextCompat.checkSelfPermission(
-                                context,
+                "Pending" -> Button(onClick = {
+                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        ActivityCompat.requestPermissions(
+                            context as Activity,
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
                                 Manifest.permission.FOREGROUND_SERVICE
-                            ) != PackageManager.PERMISSION_GRANTED
-                        ) {
-                            ActivityCompat.requestPermissions(
-                                context as Activity,
-                                arrayOf(
-                                    Manifest.permission.ACCESS_FINE_LOCATION,
-                                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                                    Manifest.permission.FOREGROUND_SERVICE
-                                ),
-                                101
-                            )
-                            return@Button
-                        }
-
-                        val intent = Intent(context, DeliveryTrackingService::class.java)
-                        intent.putExtra("orderId", order.orderId)
-                        ContextCompat.startForegroundService(context, intent)
-                        SharedPrefManager.putString("D_OTP",generateOrderNumber());
-
-
-
-
-                        // ✅ Update local order immediately
-                        val updatedOrder = order.copy(
-                            status = "inprogress",
-                            dBoy_Id = currentUser!!.uid,
-                            deliveryBoye = "$name"
-                            //deliveryTimeOTP = SharedPrefManager.getString("D_OTP")
-
+                            ),
+                            101
                         )
-                        onStatusChange(updatedOrder)  // update orders in DeliveryHome
-                        onDismiss()  // close dialog
+                        return@Button
+                    }
 
-                        // ✅ Firestore update
-                        updateOrderStatusByOrderId(
-                            order.orderId ?: "",
-                            "inprogress",
-                            "$name",
-                            currentUser.uid,
-                            deliveryTimeOTP = SharedPrefManager.getString("D_OTP")
+                    val intent = Intent(context, DeliveryTrackingService::class.java)
+                    intent.putExtra("orderId", order.orderId)
+                    ContextCompat.startForegroundService(context, intent)
+                    otp11 = generateOrderNumber()
 
-                        ) {}
-                    }) { Text("Accept") }
+                    val updatedOrder = order.copy(
+                        status = "inprogress",
+                        dBoy_Id = currentUser!!.uid,
+                        deliveryBoye = "$name"
+                    )
+                    onStatusChange(updatedOrder)
+                    onDismiss()
 
+                    updateOrderStatusByOrderId(
+                        order.orderId ?: "",
+                        "inprogress",
+                        "$name",
+                        currentUser.uid,
+                        deliveryTimeOTP = otp11
+                    ) {}
+                }) { Text("Accept") }
 
                 "inprogress" -> Button(onClick = {
-                    updateOrderStatusByOrderId(order.orderId ?: "", "out for delivery", "$name", "$dBoyId",deliveryTimeOTP = SharedPrefManager.getString("D_OTP")) {
-                        onStatusChange(order.copy(status = "out for delivery"))
-                        onDismiss()
-                    }
+                    FirebaseFirestore.getInstance()
+                        .collection("orders")
+                        .document(order.orderId ?: "")
+                        .get()
+                        .addOnSuccessListener { document ->
+                            val savedOtp = document.getString("deliveryTimeOTP") ?: ""
+                            updateOrderStatusByOrderId(
+                                order.orderId ?: "",
+                                "out for delivery",
+                                "$name",
+                                "$dBoyId",
+                                deliveryTimeOTP = savedOtp
+                            ) {
+                                onStatusChange(order.copy(status = "out for delivery"))
+                                onDismiss()
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Toast.makeText(context, "Failed to fetch OTP: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
                 }) { Text("Out for Delivery") }
 
                 "out for delivery" -> Button(onClick = {
-
-                    updateOrderStatusByOrderId(order.orderId ?: "", "delivered", "$name", "$dBoyId",deliveryTimeOTP = SharedPrefManager.getString("D_OTP")) {
-                        onStatusChange(order.copy(status = "delivered"))
-                        onDismiss()
-                        context.stopService(Intent(context, DeliveryTrackingService::class.java))
-                    }
+                    onDeliveredClicked(order)  // ✅ yahan se OTP dialog parent me open hoga
                 }) { Text("Delivered") }
-
             }
         },
         dismissButton = {
             if (order.status == "Pending") OutlinedButton(onClick = {
-                updateOrderStatusByOrderId(order.orderId ?: "", "Cancelled", "$name", "$dBoyId",deliveryTimeOTP = SharedPrefManager.getString("D_OTP")) {
+                updateOrderStatusByOrderId(order.orderId ?: "", "Cancelled", "$name", "$dBoyId", "") {
                     onStatusChange(order.copy(status = "Cancelled"))
                     onDismiss()
                 }
-                onDismiss()
-            }) { Text("Cancel order", style = TextStyle(color = Color.Red)) }
+            }) { Text("Cancel order", color = Color.Red) }
         }
     )
 }
@@ -674,6 +556,144 @@ fun generateOrderNumber(): String {
     val number = Random.nextInt(1000, 10000) // from 100000 to 999999
     return number.toString()
 }
+
+@Composable
+fun OtpDialogForOrder(
+    order: Order,
+    currentUser: FirebaseUser?,
+    dBoyId: String?,
+    name: String?,
+    onDismiss: () -> Unit,
+    onStatusChange: (Order) -> Unit
+) {
+    val context = LocalContext.current
+    var enteredOtp by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = { Text("Enter OTP", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Please enter the 4-digit OTP to confirm delivery.")
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 🔸 OTP Box UI
+                OtpBoxRow(
+                    otpText = enteredOtp,
+                    onOtpChange = { value ->
+                        if (value.length <= 4 && value.all { it.isDigit() }) {
+                            enteredOtp = value
+                        }
+                    }
+                )
+
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage ?: "",
+                        color = Color.Red,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val orderId = order.orderId ?: return@Button
+                    FirebaseFirestore.getInstance()
+                        .collection("orders")
+                        .document(orderId)
+                        .get()
+                        .addOnSuccessListener { doc ->
+                            val savedOtp = doc.getString("deliveryTimeOTP")
+                            if (enteredOtp == savedOtp) {
+                                updateOrderStatusByOrderId(
+                                    orderId,
+                                    "delivered",
+                                    "$name",
+                                    "$dBoyId",
+                                    deliveryTimeOTP = savedOtp ?: ""
+                                ) {
+                                    Toast.makeText(context, "Order delivered successfully!", Toast.LENGTH_SHORT).show()
+                                    onStatusChange(order.copy(status = "delivered"))
+                                    onDismiss()
+                                    context.stopService(Intent(context, DeliveryTrackingService::class.java))
+                                }
+                            } else {
+                                errorMessage = "Invalid OTP. Please try again."
+                            }
+                        }
+                        .addOnFailureListener {
+                            errorMessage = "Error fetching OTP from server."
+                        }
+                },
+                enabled = enteredOtp.length == 4
+            ) {
+                Text("Verify OTP")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onDismiss() }) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun OtpBoxRow(
+    otpText: String,
+    onOtpChange: (String) -> Unit
+) {
+    val focusRequester = remember { FocusRequester() }
+
+    Box(
+        modifier = Modifier
+            .clickable { focusRequester.requestFocus() }
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(4) { index ->
+                val char = otpText.getOrNull(index)?.toString() ?: ""
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(50.dp)
+                        .border(
+                            width = 1.dp,
+                            color = Color.Gray,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                ) {
+                    Text(
+                        text = char,
+                        style = TextStyle(fontSize = 20.sp, textAlign = TextAlign.Center)
+                    )
+                }
+            }
+        }
+
+        BasicTextField(
+            value = otpText,
+            onValueChange = { onOtpChange(it) },
+            modifier = Modifier
+                .matchParentSize()
+                .focusRequester(focusRequester)
+                .alpha(0f), // invisible field for input
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true
+        )
+    }
+}
+
+
 
 
 
