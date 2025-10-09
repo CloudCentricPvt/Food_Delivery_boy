@@ -555,7 +555,6 @@ fun generateOrderNumber(): String {
     val number = Random.nextInt(1000, 10000) // from 100000 to 999999
     return number.toString()
 }
-
 @Composable
 fun OtpDialogForOrder(
     order: Order,
