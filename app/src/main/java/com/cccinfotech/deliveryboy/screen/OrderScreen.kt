@@ -530,7 +530,6 @@ fun updateOrderStatusByOrderId(
         .addOnSuccessListener { onSuccess() }
         .addOnFailureListener { it.printStackTrace() }
 }
-
 fun getUserData(db: FirebaseFirestore, userId: String, onResult: (User) -> Unit) {
     db.collection("users")
         .document(userId)
