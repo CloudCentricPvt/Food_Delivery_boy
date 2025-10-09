@@ -550,7 +550,6 @@ fun getUserData(db: FirebaseFirestore, userId: String, onResult: (User) -> Unit)
         .addOnFailureListener { e ->
             Log.e("FirestoreUser", "Error fetching user", e)
         }
-
 }
 fun generateOrderNumber(): String {
     val number = Random.nextInt(1000, 10000) // from 100000 to 999999
