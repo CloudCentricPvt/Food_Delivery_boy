@@ -581,7 +581,6 @@ fun OrderDetailsDialog(
 
                 val db = FirebaseFirestore.getInstance()
                 val orderRef = db.collection("orders").document(order.orderId ?: "")
-
                 db.runTransaction { transaction ->
                     val snapshot = transaction.get(orderRef)
                     val currentStatus = snapshot.getString("status")
