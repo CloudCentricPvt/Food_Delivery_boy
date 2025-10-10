@@ -613,7 +613,6 @@ fun OrderDetailsDialog(
 
             }) { Text("Cancel order", color = Color.Red) }
         }
-
     )
 }
 
