@@ -430,52 +430,6 @@ fun OrderDetailsDialog(
         },
         confirmButton = {
             when (order.status) {
-                /*"Pending" -> Button(onClick = {
-
-                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-                        ContextCompat.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE) != PackageManager.PERMISSION_GRANTED
-                    ) {
-                        ActivityCompat.requestPermissions(
-                            context as Activity,
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                                Manifest.permission.FOREGROUND_SERVICE
-                            ),
-                            101
-                        )
-                        return@Button
-                    }
-
-                    val intent = Intent(context, DeliveryTrackingService::class.java)
-                    intent.putExtra("orderId", order.orderId)
-                    ContextCompat.startForegroundService(context, intent)
-
-                    otp11 = generateOrderNumber()
-
-
-
-                    val updatedOrder = order.copy(
-                        status = "inprogress",
-                        dBoy_Id = currentUser!!.uid,
-                        deliveryBoye = "$name"
-                    )
-                    onStatusChange(updatedOrder)
-                    onDismiss()
-
-
-
-                    updateOrderStatusByOrderId(
-                        order.orderId ?: "",
-                        "inprogress",
-                        "$name",
-                        currentUser.uid,
-                        deliveryTimeOTP = otp11,
-                        true
-
-                    ) {}
-                }) { Text("Accept") }*/
 
                 "Pending" -> Button(onClick = {
 
@@ -564,18 +518,11 @@ fun OrderDetailsDialog(
                 }) { Text("Out for Delivery") }
 
                 "out for delivery" -> Button(onClick = {
-                    onDeliveredClicked(order)  // ✅ yahan se OTP dialog parent me open hoga
+                    onDeliveredClicked(order)  // yahan se OTP dialog parent me open hoga
                 }) { Text("Delivered") }
             }
         },
-       /* dismissButton = {
-            if (order.status == "Pending") OutlinedButton(onClick = {
-                updateOrderStatusByOrderId(order.orderId ?: "", "Cancelled", "$name", "$dBoyId", "",false) {
-                    onStatusChange(order.copy(status = "Cancelled"))
-                    onDismiss()
-                }
-            }) { Text("Cancel order", color = Color.Red) }
-        }*/
+
         dismissButton = {
             if (order.status == "Pending") OutlinedButton(onClick = {
 
