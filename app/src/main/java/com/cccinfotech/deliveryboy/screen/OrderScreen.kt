@@ -396,6 +396,8 @@ fun OrderDetailsDialog(
 ) {
     val context = LocalContext.current
     var otp11 by remember { mutableStateOf("") }
+    var isAccepted by remember { mutableStateOf(false) }
+
 
     AlertDialog(
         onDismissRequest = { onDismiss() },
@@ -428,7 +430,8 @@ fun OrderDetailsDialog(
         },
         confirmButton = {
             when (order.status) {
-                "Pending" -> Button(onClick = {
+                /*"Pending" -> Button(onClick = {
+
                     if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
                         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
                         ContextCompat.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE) != PackageManager.PERMISSION_GRANTED
@@ -448,7 +451,10 @@ fun OrderDetailsDialog(
                     val intent = Intent(context, DeliveryTrackingService::class.java)
                     intent.putExtra("orderId", order.orderId)
                     ContextCompat.startForegroundService(context, intent)
+
                     otp11 = generateOrderNumber()
+
+
 
                     val updatedOrder = order.copy(
                         status = "inprogress",
@@ -458,14 +464,80 @@ fun OrderDetailsDialog(
                     onStatusChange(updatedOrder)
                     onDismiss()
 
+
+
                     updateOrderStatusByOrderId(
                         order.orderId ?: "",
                         "inprogress",
                         "$name",
                         currentUser.uid,
-                        deliveryTimeOTP = otp11
+                        deliveryTimeOTP = otp11,
+                        true
+
                     ) {}
+                }) { Text("Accept") }*/
+
+                "Pending" -> Button(onClick = {
+
+                    val db = FirebaseFirestore.getInstance()
+                    val orderRef = db.collection("orders").document(order.orderId!!)
+
+                    db.runTransaction { transaction ->
+                        val snapshot = transaction.get(orderRef)
+                        val currentStatus = snapshot.getString("status")
+
+                        if (currentStatus == "Pending") {
+                            // ✅ Update order in transaction (only first device succeeds)
+                            transaction.update(orderRef, mapOf(
+                                "status" to "inprogress",
+                                "dBoy_Id" to currentUser!!.uid,
+                                "deliveryBoye" to name,
+                                "deliveryTimeOTP" to generateOrderNumber()
+                            ))
+                            true
+                        } else {
+                            false
+                        }
+                    }.addOnSuccessListener { success ->
+                        if (success) {
+                            // Start location service
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+                                ContextCompat.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE) != PackageManager.PERMISSION_GRANTED
+                            ) {
+                                ActivityCompat.requestPermissions(
+                                    context as Activity,
+                                    arrayOf(
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                                        Manifest.permission.FOREGROUND_SERVICE
+                                    ),
+                                    101
+                                )
+                                return@addOnSuccessListener
+                            }
+
+                            val intent = Intent(context, DeliveryTrackingService::class.java)
+                            intent.putExtra("orderId", order.orderId)
+                            ContextCompat.startForegroundService(context, intent)
+
+                            val updatedOrder = order.copy(
+                                status = "inprogress",
+                                dBoy_Id = currentUser!!.uid,
+                                deliveryBoye = "$name"
+                            )
+                            onStatusChange(updatedOrder)
+                            onDismiss()
+
+                        } else {
+                            Toast.makeText(context, "This order is already accepted by another delivery boy.", Toast.LENGTH_LONG).show()
+                        }
+                    }.addOnFailureListener { e ->
+                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+
                 }) { Text("Accept") }
+
 
                 "inprogress" -> Button(onClick = {
                     FirebaseFirestore.getInstance()
@@ -479,7 +551,8 @@ fun OrderDetailsDialog(
                                 "out for delivery",
                                 "$name",
                                 "$dBoyId",
-                                deliveryTimeOTP = savedOtp
+                                deliveryTimeOTP = savedOtp,
+                                true
                             ) {
                                 onStatusChange(order.copy(status = "out for delivery"))
                                 onDismiss()
@@ -495,14 +568,52 @@ fun OrderDetailsDialog(
                 }) { Text("Delivered") }
             }
         },
-        dismissButton = {
+       /* dismissButton = {
             if (order.status == "Pending") OutlinedButton(onClick = {
-                updateOrderStatusByOrderId(order.orderId ?: "", "Cancelled", "$name", "$dBoyId", "") {
+                updateOrderStatusByOrderId(order.orderId ?: "", "Cancelled", "$name", "$dBoyId", "",false) {
                     onStatusChange(order.copy(status = "Cancelled"))
                     onDismiss()
                 }
             }) { Text("Cancel order", color = Color.Red) }
+        }*/
+        dismissButton = {
+            if (order.status == "Pending") OutlinedButton(onClick = {
+
+                val db = FirebaseFirestore.getInstance()
+                val orderRef = db.collection("orders").document(order.orderId ?: "")
+
+                db.runTransaction { transaction ->
+                    val snapshot = transaction.get(orderRef)
+                    val currentStatus = snapshot.getString("status")
+
+                    if (currentStatus == "Pending") {
+                        // Only cancel if it's still pending
+                        transaction.update(orderRef, "status", "Cancelled")
+                        true
+                    } else {
+                        //  Someone has already accepted the order
+                        false
+                    }
+                }.addOnSuccessListener { success ->
+                    if (success) {
+                        updateOrderStatusByOrderId(order.orderId ?: "", "Cancelled", "$name", "$dBoyId", "", false) {
+                            onStatusChange(order.copy(status = "Cancelled"))
+                            onDismiss()
+                        }
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "This order has already been accepted by another delivery boy. You can’t cancel it.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }.addOnFailureListener { e ->
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+
+            }) { Text("Cancel order", color = Color.Red) }
         }
+
     )
 }
 
@@ -512,6 +623,7 @@ fun updateOrderStatusByOrderId(
     dName: String,
     dBoyID: String,
     deliveryTimeOTP: String,
+    isAccepted:Boolean,
     onSuccess: () -> Unit
 ) {
     FirebaseFirestore.getInstance()
@@ -523,7 +635,8 @@ fun updateOrderStatusByOrderId(
                 "deliveryBoye" to dName,
                 "orderId" to orderId,
                 "dBoy_Id" to dBoyID,
-                "deliveryTimeOTP" to deliveryTimeOTP
+                "deliveryTimeOTP" to deliveryTimeOTP,
+                "isAccepted" to isAccepted
             )
         )
         .addOnSuccessListener { onSuccess() }
@@ -613,7 +726,8 @@ fun OtpDialogForOrder(
                                     "delivered",
                                     "$name",
                                     "$dBoyId",
-                                    deliveryTimeOTP = savedOtp ?: ""
+                                    deliveryTimeOTP = savedOtp ?: "",
+                                    true
                                 ) {
                                     Toast.makeText(context, "Order delivered successfully!", Toast.LENGTH_SHORT).show()
                                     onStatusChange(order.copy(status = "delivered"))
@@ -688,6 +802,60 @@ fun OtpBoxRow(
         )
     }
 }
+
+fun getData(db: FirebaseFirestore, userId: String, onResult: (User) -> Unit) {
+    db.collection("users")
+        .document(userId)
+        .get()
+        .addOnSuccessListener { document ->
+            if (document != null && document.exists()) {
+                val name = document.getString("name")
+                val email = document.getString("email")
+                val phone = document.getString("phone")
+                val role = document.getString("role")
+                onResult(User(name, email, phone, role))
+
+                Log.d("FirestoreUser", "Name: $name, Email: $email, Phone: $phone")
+            } else {
+                Log.d("FirestoreUser", "No such document")
+            }
+
+        }
+        .addOnFailureListener { e ->
+            Log.e("FirestoreUser", "Error fetching user", e)
+        }
+
+}
+
+/*fun getOrderNoByOrderId(
+    orderId: String,
+    onResult: (Boolean, Boolean?) -> Unit
+) {
+    val db = FirebaseFirestore.getInstance()
+
+    db.collection("orders")
+        .document(orderId)
+        .get()
+        .addOnSuccessListener { snapshot ->
+            if (snapshot.exists()) {
+                val isAccepted = snapshot.getBoolean("isAccepted")
+
+                if (isAccepted == true) {
+                    onResult(true, isAccepted)   // ✅ orderNo mil gaya
+                } else {
+                    onResult(false, null)     // ❌ orderNo field nahi mila
+                }
+            } else {
+                onResult(false, null)         // ❌ order document nahi mila
+            }
+        }
+        .addOnFailureListener { e ->
+            onResult(false, null)             // ❌ error aaya
+            Log.e("Firestore", "Error fetching orderNo", e)
+        }
+}*/
+
+
 
 
 
