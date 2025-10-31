@@ -29,7 +29,6 @@ fun DeliveryAppMain() {
     } else {
         "login"
     }
-
     NavHost(
         navController = navController,
         startDestination = startDestination

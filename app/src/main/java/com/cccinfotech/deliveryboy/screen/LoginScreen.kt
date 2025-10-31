@@ -87,7 +87,7 @@ fun AuthScreen(navController: NavController?) {
 
                         hint = "Enter Email"
                     )
-                    // 🔴 Show email error
+                    // Show email error
                     if (emailError.isNotEmpty()) {
                         Text(
                             text = emailError,
@@ -109,7 +109,7 @@ fun AuthScreen(navController: NavController?) {
                         },
                         hint = "Enter Password"
                     )
-                    // 🔴 Show password error
+                    // Show password error
                     if (passwordError.isNotEmpty()) {
                         Text(
                             text = passwordError,
@@ -165,7 +165,7 @@ fun AuthScreen(navController: NavController?) {
                                                 val role = document.getString("role")
 
                                                 if (role == "Delivery boy") {
-                                                    // ✅ Step 2: Update FCM token
+                                                    // Step 2: Update FCM token
                                                     db.collection("users")
                                                         .document(uid)
                                                         .update("fcm_token", fcmToken)
@@ -176,7 +176,7 @@ fun AuthScreen(navController: NavController?) {
                                                             Log.e("##FCM", "Failed to save token: ${it.message}")
                                                         }
 
-                                                    // ✅ Step 3: Navigate to delivery home screen
+                                                    // Step 3: Navigate to delivery home screen
                                                     navController?.navigate("delivery_boy_home_screen") {
                                                         SharedPrefManager.putBoolean("Logged_In", true)
                                                         SharedPrefManager.putString("deliveryBoy_name", uid)

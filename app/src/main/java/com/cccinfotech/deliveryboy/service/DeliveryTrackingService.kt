@@ -39,7 +39,7 @@ class DeliveryTrackingService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+    /*override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         orderId = intent?.getStringExtra("orderId")
 
         createNotificationChannel()
@@ -65,7 +65,37 @@ class DeliveryTrackingService : Service() {
 
         fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
         return START_STICKY
+    }*/
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        orderId = intent?.getStringExtra("orderId")
+
+        createNotificationChannel()
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Tracking Order")
+            .setContentText("Order #$orderId is in progress")
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
+            .build()
+
+        startForeground(1, notification)
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 5000)
+            .setMinUpdateIntervalMillis(5000)
+            .setMinUpdateDistanceMeters(20f) // 🔸 Only update if moved 20 meters
+            .build()
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        fusedLocationClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+        return START_STICKY
     }
+
 
     override fun onDestroy() {
         super.onDestroy()

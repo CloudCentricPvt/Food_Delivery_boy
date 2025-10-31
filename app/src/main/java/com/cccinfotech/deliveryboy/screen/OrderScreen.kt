@@ -772,37 +772,6 @@ fun getData(db: FirebaseFirestore, userId: String, onResult: (User) -> Unit) {
 
 }
 
-/*fun getOrderNoByOrderId(
-    orderId: String,
-    onResult: (Boolean, Boolean?) -> Unit
-) {
-    val db = FirebaseFirestore.getInstance()
-
-    db.collection("orders")
-        .document(orderId)
-        .get()
-        .addOnSuccessListener { snapshot ->
-            if (snapshot.exists()) {
-                val isAccepted = snapshot.getBoolean("isAccepted")
-
-                if (isAccepted == true) {
-                    onResult(true, isAccepted)   // ✅ orderNo mil gaya
-                } else {
-                    onResult(false, null)     // ❌ orderNo field nahi mila
-                }
-            } else {
-                onResult(false, null)         // ❌ order document nahi mila
-            }
-        }
-        .addOnFailureListener { e ->
-            onResult(false, null)             // ❌ error aaya
-            Log.e("Firestore", "Error fetching orderNo", e)
-        }
-}*/
-
-
-
-
 
 
 
